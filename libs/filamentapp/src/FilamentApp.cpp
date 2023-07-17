@@ -559,7 +559,7 @@ FilamentApp::Window::Window(FilamentApp* filamentApp,
     const int x = SDL_WINDOWPOS_CENTERED;
     const int y = SDL_WINDOWPOS_CENTERED;
     SDL_Init(SDL_INIT_VIDEO);
-    uint32_t windowFlags = SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI;
+    uint32_t windowFlags = SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_OPENGL;
     if (config.resizeable) {
         windowFlags |= SDL_WINDOW_RESIZABLE;
     }

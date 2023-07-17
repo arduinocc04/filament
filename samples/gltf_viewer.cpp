@@ -496,7 +496,8 @@ int main(int argc, char** argv) {
 
     app.config.title = "Zed Body Tracking Example";
     app.config.iblDirectory = FilamentApp::getRootAssetsPath() + DEFAULT_IBL;
-    app.config.fullscreen = false;
+    app.config.fullscreen = true;
+    app.config.resizeable = false;
 
     int optionIndex = handleCommandLineArguments(argc, argv, &app);
 
