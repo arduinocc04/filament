@@ -57,6 +57,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <map>
 
 #include "generated/resources/gltf_demo.h"
 #include "materials/uberarchive.h"
@@ -866,7 +867,14 @@ int main(int argc, char** argv) {
         // Gradually add renderables to the scene as their textures become ready.
         app.viewer->populateScene();
 
-        app.viewer->applyAnimation(now);
+        std::map<int, int> connection;
+        connection[0] = 0;
+        connection[1] = 10;
+        connection[2] = 15;
+
+        app.viewer->applyZed(connection, now);
+
+        // app.viewer->applyAnimation(now);
     };
 
     auto resize = [&app](Engine* engine, View* view) {

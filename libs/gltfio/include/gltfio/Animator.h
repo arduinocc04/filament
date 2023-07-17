@@ -20,6 +20,8 @@
 #include <gltfio/FilamentAsset.h>
 #include <gltfio/FilamentInstance.h>
 
+#include <map>
+
 namespace filament::gltfio {
 
 struct FFilamentAsset;
@@ -38,6 +40,7 @@ struct AnimatorImpl;
  */
 class UTILS_PUBLIC Animator {
 public:
+    void applyZed(std::map<int, int> connection, const utils::Entity*, float t);
     /**
      * Applies rotation, translation, and scale to entities that have been targeted by the given
      * animation definition. Uses filament::TransformManager.

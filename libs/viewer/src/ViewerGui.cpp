@@ -509,6 +509,13 @@ void ViewerGui::sceneSelectionUI() {
     }
 }
 
+void ViewerGui::applyZed(std::map<int, int>connection, float t) {
+    FilamentInstance* instance = mInstance;
+    Animator& animator = *instance->getAnimator();
+    const utils::Entity* entities = instance->getEntities();
+    animator.applyZed(connection, entities, t);
+}
+
 void ViewerGui::applyAnimation(double currentTime, FilamentInstance* instance) {
     instance = instance ? instance : mInstance;
     assert_invariant(!isRemoteMode());

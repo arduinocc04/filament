@@ -78,6 +78,7 @@ struct AnimatorImpl {
     FixedCapacityVector<mat4f> crossFade;
     void addChannels(const FixedCapacityVector<Entity>& nodeMap, const cgltf_animation& srcAnim,
             Animation& dst);
+    void applyZed(const Entity& node, float t);
     void applyAnimation(const Channel& channel, float t, size_t prevIndex, size_t nextIndex);
     void stashCrossFade();
     void applyCrossFade(float alpha);
@@ -259,6 +260,12 @@ size_t Animator::getAnimationCount() const {
     return mImpl->animations.size();
 }
 
+void Animator::applyZed(std::map<int, int> connection, const utils::Entity* entities, float t) {
+    for(auto iter = connection.begin(); iter != connection.end(); iter++) {
+        mImpl->applyZed(entities[iter->second], t);
+    }
+}
+
 void Animator::applyAnimation(size_t animationIndex, float time) const {
     const Animation& anim = mImpl->animations[animationIndex];
     time = fmod(time, anim.duration);
@@ -423,6 +430,14 @@ void AnimatorImpl::addChannels(const FixedCapacityVector<Entity>& nodeMap,
         setTransformType(srcChannel, dstChannel);
         dst.channels.push_back(dstChannel);
     }
+}
+
+void AnimatorImpl::applyZed(const Entity& e, float t) {
+    TransformManager::Instance node = transformManager->getInstance(e);
+    mat4f xform;
+    if((int)t % 2) xform = mat4f(1);
+    else xform = mat4f(10);
+    transformManager->setTransform(node, xform);
 }
 
 void AnimatorImpl::applyAnimation(const Channel& channel, float t, size_t prevIndex,
