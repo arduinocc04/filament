@@ -261,9 +261,11 @@ size_t Animator::getAnimationCount() const {
 }
 
 void Animator::applyZed(std::map<int, int> connection, const utils::Entity* entities, float t) {
+    TransformManager& transformManager = *mImpl->transformManager;
+    transformManager.openLocalTransformTransaction();
     for(auto iter = connection.begin(); iter != connection.end(); iter++) {
-        printf("t:%f\n", t);
-        if((int)(t/10) == iter->second) {
+        // printf("t:%f\n", t);
+        if((int)t == iter->second) {
             printf("iterse:%d\n", iter->second);
             mImpl->applyZed(entities[iter->second], 0);
         }
@@ -271,6 +273,7 @@ void Animator::applyZed(std::map<int, int> connection, const utils::Entity* enti
             mImpl->applyZed(entities[iter->second], 1);
         }
     }
+    transformManager.commitLocalTransformTransaction();
 }
 
 void Animator::applyAnimation(size_t animationIndex, float time) const {
@@ -442,8 +445,12 @@ void AnimatorImpl::addChannels(const FixedCapacityVector<Entity>& nodeMap,
 void AnimatorImpl::applyZed(const Entity& e, float t) {
     TransformManager::Instance node = transformManager->getInstance(e);
     mat4f xform;
-    if((int)t % 2) xform = composeMatrix(float3(0), quatf(0), float3(1));
-    else xform = composeMatrix(float3(0), quatf(0), float3(3));
+    quatf origin;
+    origin.x = 0.1;
+    quatf r;
+    r.x = 1;
+    if((int)t % 2) xform = composeMatrix(float3(0), origin, float3(1));
+    else xform = composeMatrix(float3(0), r, float3(1));
     transformManager->setTransform(node, xform);
 }
 

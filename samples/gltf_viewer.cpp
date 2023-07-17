@@ -75,6 +75,8 @@ using namespace filament::viewer;
 using namespace filament::gltfio;
 using namespace utils;
 
+std::map<int, int> connection;
+
 enum MaterialSource {
     JITSHADER,
     UBERSHADER,
@@ -486,6 +488,10 @@ static void onClick(App& app, View* view, ImVec2 pos) {
 }
 
 int main(int argc, char** argv) {
+    for(int i = 0; i < 67; i++) {
+        connection[i] = i;
+    }
+
     App app;
 
     app.config.title = "Filament";
@@ -867,14 +873,7 @@ int main(int argc, char** argv) {
         // Gradually add renderables to the scene as their textures become ready.
         app.viewer->populateScene();
 
-        std::map<int, int> connection;
-        for(int i = 0; i < 67; i++) {
-            connection[i] = i;
-        }
-        // connection[1] = 10;
-        // connection[2] = 15;
-
-        app.viewer->applyZed(connection, now);
+        app.viewer->applyZed(connection, (int)now % 67);
 
         // app.viewer->applyAnimation(now);
     };

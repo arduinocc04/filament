@@ -515,6 +515,7 @@ void ViewerGui::applyZed(std::map<int, int>connection, float t) {
     const utils::Entity* entities = instance->getEntities();
     // printf("EC:%zu\n", instance->getEntityCount());
     animator.applyZed(connection, entities, t);
+    animator.updateBoneMatrices();
 }
 
 void ViewerGui::applyAnimation(double currentTime, FilamentInstance* instance) {
