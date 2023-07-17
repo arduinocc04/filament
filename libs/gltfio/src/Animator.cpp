@@ -262,7 +262,14 @@ size_t Animator::getAnimationCount() const {
 
 void Animator::applyZed(std::map<int, int> connection, const utils::Entity* entities, float t) {
     for(auto iter = connection.begin(); iter != connection.end(); iter++) {
-        mImpl->applyZed(entities[iter->second], t);
+        printf("t:%f\n", t);
+        if((int)(t/10) == iter->second) {
+            printf("iterse:%d\n", iter->second);
+            mImpl->applyZed(entities[iter->second], 0);
+        }
+        else {
+            mImpl->applyZed(entities[iter->second], 1);
+        }
     }
 }
 
@@ -435,8 +442,8 @@ void AnimatorImpl::addChannels(const FixedCapacityVector<Entity>& nodeMap,
 void AnimatorImpl::applyZed(const Entity& e, float t) {
     TransformManager::Instance node = transformManager->getInstance(e);
     mat4f xform;
-    if((int)t % 2) xform = mat4f(1);
-    else xform = mat4f(10);
+    if((int)t % 2) xform = composeMatrix(float3(0), quatf(0), float3(1));
+    else xform = composeMatrix(float3(0), quatf(0), float3(3));
     transformManager->setTransform(node, xform);
 }
 

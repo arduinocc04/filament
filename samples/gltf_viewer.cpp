@@ -868,9 +868,11 @@ int main(int argc, char** argv) {
         app.viewer->populateScene();
 
         std::map<int, int> connection;
-        connection[0] = 0;
-        connection[1] = 10;
-        connection[2] = 15;
+        for(int i = 0; i < 67; i++) {
+            connection[i] = i;
+        }
+        // connection[1] = 10;
+        // connection[2] = 15;
 
         app.viewer->applyZed(connection, now);
 

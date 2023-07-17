@@ -513,6 +513,7 @@ void ViewerGui::applyZed(std::map<int, int>connection, float t) {
     FilamentInstance* instance = mInstance;
     Animator& animator = *instance->getAnimator();
     const utils::Entity* entities = instance->getEntities();
+    // printf("EC:%zu\n", instance->getEntityCount());
     animator.applyZed(connection, entities, t);
 }
 
