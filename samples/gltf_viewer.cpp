@@ -494,8 +494,9 @@ int main(int argc, char** argv) {
 
     App app;
 
-    app.config.title = "Filament";
+    app.config.title = "Zed Body Tracking Example";
     app.config.iblDirectory = FilamentApp::getRootAssetsPath() + DEFAULT_IBL;
+    app.config.fullscreen = false;
 
     int optionIndex = handleCommandLineArguments(argc, argv, &app);
 
@@ -891,9 +892,9 @@ int main(int argc, char** argv) {
     };
 
     auto gui = [&app](Engine* engine, View* view) {
-        app.viewer->updateUserInterface();
+        // app.viewer->updateUserInterface();
 
-        FilamentApp::get().setSidebarWidth(app.viewer->getSidebarWidth());
+        // FilamentApp::get().setSidebarWidth(app.viewer->getSidebarWidth());
     };
 
     auto preRender = [&app](Engine* engine, View* view, Scene* scene, Renderer* renderer) {
@@ -986,7 +987,7 @@ int main(int argc, char** argv) {
         app.viewer->setAsset(app.asset, app.instance);
     });
 
-    filamentApp.run(app.config, setup, cleanup, gui, preRender, postRender);
+    filamentApp.run(app.config, setup, cleanup, gui, preRender, postRender, 1920, 1080);
 
     return 0;
 }

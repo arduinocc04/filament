@@ -558,6 +558,7 @@ FilamentApp::Window::Window(FilamentApp* filamentApp,
         : mFilamentApp(filamentApp), mIsHeadless(config.headless) {
     const int x = SDL_WINDOWPOS_CENTERED;
     const int y = SDL_WINDOWPOS_CENTERED;
+    SDL_Init(SDL_INIT_VIDEO);
     uint32_t windowFlags = SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI;
     if (config.resizeable) {
         windowFlags |= SDL_WINDOW_RESIZABLE;
@@ -570,6 +571,10 @@ FilamentApp::Window::Window(FilamentApp* filamentApp,
     // Even if we're in headless mode, we still need to create a window, otherwise SDL will not poll
     // events.
     mWindow = SDL_CreateWindow(title.c_str(), x, y, (int) w, (int) h, windowFlags);
+
+    if(config.fullscreen) {
+        SDL_SetWindowFullscreen(mWindow, SDL_WINDOW_FULLSCREEN_DESKTOP);
+    }
 
     auto const createEngine = [&config, this]() {
         auto backend = config.backend;
