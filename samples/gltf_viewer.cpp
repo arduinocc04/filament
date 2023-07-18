@@ -62,6 +62,8 @@
 #include "generated/resources/gltf_demo.h"
 #include "materials/uberarchive.h"
 
+#include "zed/zed.h"
+
 #if FILAMENT_DISABLE_MATOPT
 #   define OPTIMIZE_MATERIALS false
 #else
@@ -76,6 +78,7 @@ using namespace filament::gltfio;
 using namespace utils;
 
 std::map<int, int> connection;
+sl::Camera zedCam;
 
 enum MaterialSource {
     JITSHADER,
@@ -332,25 +335,25 @@ static void createGroundPlane(Engine* engine, Scene* scene, App& app) {
         aabb = aabb.transform(transform);
     }
 
-    float3 planeExtent{10.0f * aabb.extent().x, 0.0f, 10.0f * aabb.extent().z};
+    filament::math::float3 planeExtent{10.0f * aabb.extent().x, 0.0f, 10.0f * aabb.extent().z};
 
-    const static float3 vertices[] = {
+    const static filament::math::float3 vertices[] = {
             { -planeExtent.x, 0, -planeExtent.z },
             { -planeExtent.x, 0,  planeExtent.z },
             {  planeExtent.x, 0,  planeExtent.z },
             {  planeExtent.x, 0, -planeExtent.z },
     };
 
-    short4 tbn = packSnorm16(
+    filament::math::short4 tbn = packSnorm16(
             mat3f::packTangentFrame(
                     mat3f{
-                            float3{ 1.0f, 0.0f, 0.0f },
-                            float3{ 0.0f, 0.0f, 1.0f },
-                            float3{ 0.0f, 1.0f, 0.0f }
+                            filament::math::float3{ 1.0f, 0.0f, 0.0f },
+                            filament::math::float3{ 0.0f, 0.0f, 1.0f },
+                            filament::math::float3{ 0.0f, 1.0f, 0.0f }
                     }
             ).xyzw);
 
-    const static short4 normals[] { tbn, tbn, tbn, tbn };
+    const static filament::math::short4 normals[] { tbn, tbn, tbn, tbn };
 
     VertexBuffer* vertexBuffer = VertexBuffer::Builder()
             .vertexCount(4)
@@ -391,7 +394,7 @@ static void createGroundPlane(Engine* engine, Scene* scene, App& app) {
 
     auto& tcm = engine->getTransformManager();
     tcm.setTransform(tcm.getInstance(groundPlane),
-            mat4f::translation(float3{ 0, aabb.min.y, -4 }));
+            mat4f::translation(filament::math::float3{ 0, aabb.min.y, -4 }));
 
     auto& rcm = engine->getRenderableManager();
     auto instance = rcm.getInstance(groundPlane);
@@ -403,7 +406,7 @@ static void createGroundPlane(Engine* engine, Scene* scene, App& app) {
     app.scene.groundMaterial = shadowMaterial;
 }
 
-static constexpr float4 sFullScreenTriangleVertices[3] = {
+static constexpr filament::math::float4 sFullScreenTriangleVertices[3] = {
         { -1.0f, -1.0f, 1.0f, 1.0f },
         {  3.0f, -1.0f, 1.0f, 1.0f },
         { -1.0f,  3.0f, 1.0f, 1.0f }
@@ -416,7 +419,7 @@ static void createOverdrawVisualizerEntities(Engine* engine, Scene* scene, App& 
             .package(GLTF_DEMO_OVERDRAW_DATA, GLTF_DEMO_OVERDRAW_SIZE)
             .build(*engine);
 
-    const float3 overdrawColors[App::Scene::OVERDRAW_LAYERS] = {
+    const filament::math::float3 overdrawColors[App::Scene::OVERDRAW_LAYERS] = {
             {0.0f, 0.0f, 1.0f},     // blue         (overdrawn 1 time)
             {0.0f, 1.0f, 0.0f},     // green        (overdrawn 2 times)
             {1.0f, 0.0f, 1.0f},     // magenta      (overdrawn 3 times)
@@ -865,6 +868,7 @@ int main(int argc, char** argv) {
 
         AssetLoader::destroy(&app.assetLoader);
     };
+    zed::init();
 
     auto animate = [&app](Engine* engine, View* view, double now) {
         app.resourceLoader->asyncUpdateLoad();
@@ -874,6 +878,8 @@ int main(int argc, char** argv) {
 
         // Gradually add renderables to the scene as their textures become ready.
         app.viewer->populateScene();
+
+        sl::Bodies bodies = zed::retrieveBodies();
 
         app.viewer->applyZed(connection, (int)now % 67);
 
@@ -943,7 +949,7 @@ int main(int argc, char** argv) {
         tcm.setParent(tcm.getInstance(camera.getEntity()), root);
         tcm.setParent(tcm.getInstance(app.asset->getRoot()), root);
         tcm.setParent(tcm.getInstance(view->getFogEntity()), root);
-        tcm.setTransform(root, mat4f::translation(float3{ app.originIsFarAway ? 1e6f : 0.0f }));
+        tcm.setTransform(root, mat4f::translation(filament::math::float3{ app.originIsFarAway ? 1e6f : 0.0f }));
 
         // Check if color grading has changed.
         ColorGradingSettings& options = app.viewer->getSettings().view.colorGrading;

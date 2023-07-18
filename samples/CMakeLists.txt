@@ -251,7 +251,7 @@ if (NOT ANDROID)
 
     # Sample app specific
     target_link_libraries(frame_generator PRIVATE imageio)
-    target_link_libraries(gltf_viewer PRIVATE gltf-demo-resources uberarchive gltfio viewer)
+    target_link_libraries(gltf_viewer PRIVATE gltf-demo-resources uberarchive gltfio viewer zed)
     target_link_libraries(gltf_instances PRIVATE gltf-demo-resources uberarchive gltfio viewer)
     target_link_libraries(hellopbr PRIVATE filameshio suzanne-resources)
     target_link_libraries(image_viewer PRIVATE viewer imageio)
