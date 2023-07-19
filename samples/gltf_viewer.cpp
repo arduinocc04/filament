@@ -34,6 +34,7 @@
 #include <gltfio/FilamentAsset.h>
 #include <gltfio/ResourceLoader.h>
 #include <gltfio/TextureProvider.h>
+#include <gltfio/FilamentInstance.h>
 
 #include <viewer/AutomationEngine.h>
 #include <viewer/AutomationSpec.h>
@@ -58,6 +59,7 @@
 #include <iostream>
 #include <string>
 #include <map>
+#include <cstring> // memcpy
 
 #include "generated/resources/gltf_demo.h"
 #include "materials/uberarchive.h"
@@ -78,7 +80,10 @@ using namespace filament::gltfio;
 using namespace utils;
 
 std::map<int, int> connection;
-sl::Camera zedCam;
+zed::VZCam zedCam;
+std::vector<gltfio::FilamentInstance*> bodyPointers;
+std::vector<filament::math::float3*> filf3Pointers;
+std::vector<filament::math::float4*> filf4Pointers;
 
 enum MaterialSource {
     JITSHADER,
@@ -491,16 +496,37 @@ static void onClick(App& app, View* view, ImVec2 pos) {
 }
 
 int main(int argc, char** argv) {
-    for(int i = 0; i < 67; i++) {
-        connection[i] = i;
-    }
+    connection[0] = 0;
+    for(int i = 1; i <= 5; i++) connection[i] = i + 2;
+    connection[12] = 9;
+    connection[13] = 33;
+    connection[14] = 14;
+    connection[15] = 35;
+    connection[16] = 12;
+    connection[17] = 36;
+    connection[18] = 57;
+    connection[19] = 62;
+    connection[20] = 59;
+    connection[21] = 64;
+    connection[22] = 60;
+    connection[23] = 65;
+    connection[24] = 61;
+    connection[25] = 66;
+    connection[30] = 16;
+    connection[31] = 40;
+    connection[32] = 17;
+    connection[33] = 41;
+    connection[34] = 24;
+    connection[35] = 48;
+    connection[36] = 29;
+    connection[37] = 53;
 
     App app;
 
     app.config.title = "Zed Body Tracking Example";
     app.config.iblDirectory = FilamentApp::getRootAssetsPath() + DEFAULT_IBL;
-    app.config.fullscreen = true;
-    app.config.resizeable = false;
+    app.config.fullscreen = false;
+    app.config.resizeable = true;
 
     int optionIndex = handleCommandLineArguments(argc, argv, &app);
 
@@ -546,6 +572,9 @@ int main(int argc, char** argv) {
         // Parse the glTF file and create Filament entities.
         app.asset = app.assetLoader->createAsset(buffer.data(), buffer.size());
         app.instance = app.asset->getInstance();
+        for(int i = 0; i < app.instance->getEntityCount(); i++) {
+            printf("i: %d, %s\n", i, app.asset->getName(app.instance->getEntities()[i]));
+        }
         buffer.clear();
         buffer.shrink_to_fit();
 
@@ -834,6 +863,11 @@ int main(int argc, char** argv) {
     };
 
     auto cleanup = [&app](Engine* engine, View*, Scene*) {
+        for(int i = bodyPointers.size() - 1; i >= 0; i--) {
+            free(bodyPointers[i]);
+            bodyPointers.pop_back();
+        }
+
         app.automationEngine->terminate();
         app.resourceLoader->asyncCancelLoad();
         app.assetLoader->destroyAsset(app.asset);
@@ -868,7 +902,8 @@ int main(int argc, char** argv) {
 
         AssetLoader::destroy(&app.assetLoader);
     };
-    zed::init();
+
+    if(zedCam.init() != 0) return -1;
 
     auto animate = [&app](Engine* engine, View* view, double now) {
         app.resourceLoader->asyncUpdateLoad();
@@ -879,11 +914,54 @@ int main(int argc, char** argv) {
         // Gradually add renderables to the scene as their textures become ready.
         app.viewer->populateScene();
 
-        sl::Bodies bodies = zed::retrieveBodies();
+        sl::Bodies bodies = zedCam.retrieveBodies();
+        for(int i = bodyPointers.size() - 1; i >= 0; i--) {
+            free(bodyPointers[i]);
+            bodyPointers.pop_back();
+        }
+        for(int i = filf3Pointers.size() - 1; i >= 0; i --) {
+            free(filf3Pointers[i]);
+            filf3Pointers.pop_back();
+        }
+        for(int i = filf4Pointers.size() - 1; i >= 0; i --) {
+            free(filf4Pointers[i]);
+            filf4Pointers.pop_back();
+        }
 
-        app.viewer->applyZed(connection, (int)now % 67);
+        for(auto body: bodies.body_list) {
+            gltfio::FilamentInstance* inst = (gltfio::FilamentInstance*)malloc(30000000);
+            filament::math::float3* locPosPJ = (filament::math::float3*)malloc(sizeof(filament::math::float3)*40);
+            filament::math::float4* locOriPJ = (filament::math::float4*)malloc(sizeof(filament::math::float4)*40);
+            bodyPointers.push_back(inst);
+            filf3Pointers.push_back(locPosPJ);
+            filf4Pointers.push_back(locOriPJ);
+            memcpy(inst, app.instance, 30000000);
+            sl::float3 pos = body.position;
+            std::vector<sl::float3> localPositionPerJoint = body.local_position_per_joint;
+            std::vector<sl::float4> localOrientationPerJoint = body.local_orientation_per_joint;
+            for(int i = 0; i < 38; i++) {
+                locPosPJ[i].x = localPositionPerJoint[i].x/10;
+                locPosPJ[i].y = localPositionPerJoint[i].y/10;
+                locPosPJ[i].z = localPositionPerJoint[i].z/10;
+                printf("i:%d x: %f y: %f z: %f\n", i, locPosPJ[i].x, locPosPJ[i].y, locPosPJ[i].z);
+                locOriPJ[i].x = localOrientationPerJoint[i].w;
+                locOriPJ[i].y = localOrientationPerJoint[i].x;
+                locOriPJ[i].z = localOrientationPerJoint[i].y;
+                locOriPJ[i].w = localOrientationPerJoint[i].z;
+                printf("i:%d x: %f y: %f z: %f w: %f\n", i, locOriPJ[i].x, locOriPJ[i].y, locOriPJ[i].z, locOriPJ[i].w);
+            }
+            locPosPJ[0].x = pos.x/10;
+            locPosPJ[0].y = pos.y/10;
+            locPosPJ[0].z = pos.z/10;
+            printf("000000: %f %f %f\n", locPosPJ[0].x, locPosPJ[0].y, locPosPJ[0].z);
+            app.viewer->applyZed(connection, inst, locPosPJ, locOriPJ);
+        }
+        printf("vec size: %lu\n", bodyPointers.size());
+        // for(int i = 0; i < app.instance->getEntityCount(); i++) {
+        //     printf("i: %d, %s\n", i, app.asset->getName(app.instance->getEntities()[i]));
+        // }
 
-        // app.viewer->applyAnimation(now);
+        app.viewer->applyAnimation(now);
     };
 
     auto resize = [&app](Engine* engine, View* view) {

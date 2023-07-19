@@ -78,7 +78,7 @@ struct AnimatorImpl {
     FixedCapacityVector<mat4f> crossFade;
     void addChannels(const FixedCapacityVector<Entity>& nodeMap, const cgltf_animation& srcAnim,
             Animation& dst);
-    void applyZed(const Entity& node, float t);
+    void applyZed(const Entity& node, math::float3 bodyD, math::float4 oriD);
     void applyAnimation(const Channel& channel, float t, size_t prevIndex, size_t nextIndex);
     void stashCrossFade();
     void applyCrossFade(float alpha);
@@ -260,18 +260,11 @@ size_t Animator::getAnimationCount() const {
     return mImpl->animations.size();
 }
 
-void Animator::applyZed(std::map<int, int> connection, const utils::Entity* entities, float t) {
+void Animator::applyZed(std::map<int, int> connection, const utils::Entity* entities, math::float3 bodyData[], math::float4 ori[]) {
     TransformManager& transformManager = *mImpl->transformManager;
     transformManager.openLocalTransformTransaction();
     for(auto iter = connection.begin(); iter != connection.end(); iter++) {
-        // printf("t:%f\n", t);
-        if((int)t == iter->second) {
-            printf("iterse:%d\n", iter->second);
-            mImpl->applyZed(entities[iter->second], 0);
-        }
-        else {
-            mImpl->applyZed(entities[iter->second], 1);
-        }
+        mImpl->applyZed(entities[iter->second], bodyData[iter->first], ori[iter->first]);
     }
     transformManager.commitLocalTransformTransaction();
 }
@@ -442,15 +435,15 @@ void AnimatorImpl::addChannels(const FixedCapacityVector<Entity>& nodeMap,
     }
 }
 
-void AnimatorImpl::applyZed(const Entity& e, float t) {
+void AnimatorImpl::applyZed(const Entity& e, math::float3 bodyD, math::float4 oriD) {
     TransformManager::Instance node = transformManager->getInstance(e);
     mat4f xform;
-    quatf origin;
-    origin.x = 0.1;
     quatf r;
-    r.x = 1;
-    if((int)t % 2) xform = composeMatrix(float3(0), origin, float3(1));
-    else xform = composeMatrix(float3(0), r, float3(1));
+    r.x = oriD.x;
+    r.y = oriD.y;
+    r.z = oriD.z;
+    r.w = oriD.w;
+    xform = composeMatrix(bodyD, r, float3(1));
     transformManager->setTransform(node, xform);
 }
 

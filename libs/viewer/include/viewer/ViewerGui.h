@@ -111,7 +111,7 @@ public:
      */
     void setIndirectLight(IndirectLight* ibl, math::float3 const* sh3);
 
-    void applyZed(std::map<int, int>connection , float t);
+    void applyZed(std::map<int, int>connection, FilamentInstance* instance, math::float3 bodyData[], math::float4 ori[]);
     /**
      * Applies the currently-selected glTF animation to the transformation hierarchy and updates
      * the bone matrices on all renderables.

@@ -509,13 +509,13 @@ void ViewerGui::sceneSelectionUI() {
     }
 }
 
-void ViewerGui::applyZed(std::map<int, int>connection, float t) {
-    FilamentInstance* instance = mInstance;
+void ViewerGui::applyZed(std::map<int, int>connection, FilamentInstance* instance, math::float3 bodyData[], math::float4 ori[]) {
     Animator& animator = *instance->getAnimator();
     const utils::Entity* entities = instance->getEntities();
     // printf("EC:%zu\n", instance->getEntityCount());
-    animator.applyZed(connection, entities, t);
+    animator.applyZed(connection, entities, bodyData, ori);
     animator.updateBoneMatrices();
+
 }
 
 void ViewerGui::applyAnimation(double currentTime, FilamentInstance* instance) {
