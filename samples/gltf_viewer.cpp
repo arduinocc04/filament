@@ -83,9 +83,10 @@ using namespace utils;
 std::map<int, int> connection;
 zed::VZCam zedCam;
 int prevBodyCnt;
-std::vector<std::tuple<gltfio::FilamentInstance*, gltfio::FilamentAsset*,filament::math::float3*, filament::math::float4*>> insts;
+std::vector<std::tuple<gltfio::FilamentInstance*,filament::math::float3*, filament::math::float4*>> insts;
 utils::Path filename;
-
+filament::math::float3 nullF3[38];
+filament::math::float4 nullF4[38];
 enum MaterialSource {
     JITSHADER,
     UBERSHADER,
@@ -554,7 +555,7 @@ int main(int argc, char** argv) {
         }
     }
 
-    auto loadAsset = [&app](utils::Path filename, FilamentAsset& asset, FilamentInstance& instance) {
+    auto loadAsset = [&app](utils::Path filename) {
         // Peek at the file size to allow pre-allocation.
         long contentSize = static_cast<long>(getFileSize(filename.c_str()));
         if (contentSize <= 0) {
@@ -571,13 +572,13 @@ int main(int argc, char** argv) {
         }
 
         // Parse the glTF file and create Filament entities.
-        asset = app.assetLoader->createAsset(buffer.data(), buffer.size());
-        instance = asset->getInstance();
-        for(int i = 0; i < instance->getEntityCount(); i++) {
-            printf("i: %d, %s\n", i, asset->getName(instance->getEntities()[i]));
+        app.asset = app.assetLoader->createAsset(buffer.data(), buffer.size());
+        app.instance = app.asset->getInstance();
+        for(int i = 0; i < app.instance->getEntityCount(); i++) {
+            printf("i: %d, %s\n", i, app.asset->getName(app.instance->getEntities()[i]));
         }
-        // buffer.clear();
-        // buffer.shrink_to_fit();
+        buffer.clear();
+        buffer.shrink_to_fit();
 
         if (!app.asset) {
             std::cerr << "Unable to parse " << filename << std::endl;
@@ -610,8 +611,6 @@ int main(int argc, char** argv) {
         if (app.recomputeAabb) {
             app.asset->getInstance()->recomputeBoundingBoxes();
         }
-
-        app.asset->releaseSourceData();
 
         // Enable stencil writes on all material instances.
         const size_t matInstanceCount = app.instance->getMaterialInstanceCount();
@@ -699,12 +698,12 @@ int main(int argc, char** argv) {
                     GLTF_DEMO_DAMAGEDHELMET_SIZE);
             app.instance = app.asset->getInstance();
         } else {
-            loadAsset(filename, app.asset, app.instance);
+            loadAsset(filename);
         }
 
         loadResources(filename);
         app.viewer->setAsset(app.asset, app.instance);
-
+        app.viewer->applyZed(connection, app.instance, nullF3, nullF4, 0);
         createGroundPlane(engine, scene, app);
         createOverdrawVisualizerEntities(engine, scene, app);
 
@@ -865,12 +864,12 @@ int main(int argc, char** argv) {
 
     auto cleanup = [&app](Engine* engine, View*, Scene*) {
         for(int i = insts.size() - 1; i >= 0; i--) {
+            app.viewer->applyZed(connection, std::get<0>(insts[i]), nullF3, nullF4, 0);
             free(std::get<0>(insts[i]));
             free(std::get<1>(insts[i]));
             free(std::get<2>(insts[i]));
             insts.pop_back();
         }
-
         app.automationEngine->terminate();
         app.resourceLoader->asyncCancelLoad();
         app.assetLoader->destroyAsset(app.asset);
@@ -907,7 +906,6 @@ int main(int argc, char** argv) {
     };
 
     if(zedCam.init() != 0) return -1;
-
     auto animate = [&app](Engine* engine, View* view, double now) {
         app.resourceLoader->asyncUpdateLoad();
 
@@ -922,10 +920,10 @@ int main(int argc, char** argv) {
         if(bodyCntChanged) {
             printf("FREEEEEEEEEEEEEE\n");
             for(int i = insts.size() - 1; i >= 0; i--) {
+                app.viewer->applyZed(connection, std::get<0>(insts[i]), nullF3, nullF4, 0);
                 free(std::get<0>(insts[i]));
                 free(std::get<1>(insts[i]));
                 free(std::get<2>(insts[i]));
-                free(std::get<3>(insts[i]));
                 insts.pop_back();
             }
         }
@@ -936,19 +934,16 @@ int main(int argc, char** argv) {
             filament::math::float4* locOriPJ;
             gltfio::FilamentAsset* asset;
             if(bodyCntChanged) {
-                inst = (gltfio::FilamentInstance*)malloc(30'000'000);
-                asset = (gltfio::FilamentAsset*)malloc(30'000'000);
+                inst = app.assetLoader->createInstance(app.asset);
                 printf("new INST:::::: %p /// %p\n", (void*)inst, std::this_thread::get_id());
                 locPosPJ = (filament::math::float3*)malloc(sizeof(filament::math::float3)*40);
                 locOriPJ = (filament::math::float4*)malloc(sizeof(filament::math::float4)*40);
                 insts.push_back(std::make_tuple(inst, locPosPJ, locOriPJ));
-                inst = tmpAsset->getInstance();
             }
             else {
                 inst = std::get<0>(insts[j]);
-                asset = std::get<1>(insts[j]);
-                locPosPJ = std::get<2>(insts[j]);
-                locOriPJ = std::get<3>(insts[j]);
+                locPosPJ = std::get<1>(insts[j]);
+                locOriPJ = std::get<2>(insts[j]);
             }
             sl::float3 pos = body.position;
             std::vector<sl::float3> localPositionPerJoint = body.local_position_per_joint;
@@ -970,8 +965,7 @@ int main(int argc, char** argv) {
             printf("000000: %f %f %f, %p\n", locPosPJ[0].x, locPosPJ[0].y, locPosPJ[0].z, (void *)inst);
             printf("%zu\n", inst->getEntityCount());
             printf("%zu\n", inst->getEntityCount());
-            printf("sdsdfsdasffads");
-            app.viewer->applyZed(connection, inst, locPosPJ, locOriPJ);
+            app.viewer->applyZed(connection, inst, locPosPJ, locOriPJ, 1);
             j++;
         }
         printf("vec size: %lu\n", insts.size());

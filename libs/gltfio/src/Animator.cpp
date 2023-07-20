@@ -78,7 +78,7 @@ struct AnimatorImpl {
     FixedCapacityVector<mat4f> crossFade;
     void addChannels(const FixedCapacityVector<Entity>& nodeMap, const cgltf_animation& srcAnim,
             Animation& dst);
-    void applyZed(const Entity& node, math::float3 bodyD, math::float4 oriD);
+    void applyZed(const Entity& node, math::float3 bodyD, math::float4 oriD, float scale);
     void applyAnimation(const Channel& channel, float t, size_t prevIndex, size_t nextIndex);
     void stashCrossFade();
     void applyCrossFade(float alpha);
@@ -260,11 +260,11 @@ size_t Animator::getAnimationCount() const {
     return mImpl->animations.size();
 }
 
-void Animator::applyZed(std::map<int, int> connection, const utils::Entity* entities, math::float3 bodyData[], math::float4 ori[]) {
+void Animator::applyZed(std::map<int, int> connection, const utils::Entity* entities, math::float3 bodyData[], math::float4 ori[], float scale) {
     TransformManager& transformManager = *mImpl->transformManager;
     transformManager.openLocalTransformTransaction();
     for(auto iter = connection.begin(); iter != connection.end(); iter++) {
-        mImpl->applyZed(entities[iter->second], bodyData[iter->first], ori[iter->first]);
+        mImpl->applyZed(entities[iter->second], bodyData[iter->first], ori[iter->first], scale);
     }
     transformManager.commitLocalTransformTransaction();
 }
@@ -435,7 +435,7 @@ void AnimatorImpl::addChannels(const FixedCapacityVector<Entity>& nodeMap,
     }
 }
 
-void AnimatorImpl::applyZed(const Entity& e, math::float3 bodyD, math::float4 oriD) {
+void AnimatorImpl::applyZed(const Entity& e, math::float3 bodyD, math::float4 oriD, float scale) {
     TransformManager::Instance node = transformManager->getInstance(e);
     mat4f xform;
     quatf r;
@@ -443,7 +443,7 @@ void AnimatorImpl::applyZed(const Entity& e, math::float3 bodyD, math::float4 or
     r.y = oriD.y;
     r.z = oriD.z;
     r.w = oriD.w;
-    xform = composeMatrix(bodyD, r, float3(1));
+    xform = composeMatrix(bodyD, r, float3(scale));
     transformManager->setTransform(node, xform);
 }
 

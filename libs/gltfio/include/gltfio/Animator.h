@@ -40,7 +40,7 @@ struct AnimatorImpl;
  */
 class UTILS_PUBLIC Animator {
 public:
-    void applyZed(std::map<int, int> connection, const utils::Entity*, math::float3 bodyData[], math::float4 ori[]);
+    void applyZed(std::map<int, int> connection, const utils::Entity*, math::float3 bodyData[], math::float4 ori[], float scale);
     /**
      * Applies rotation, translation, and scale to entities that have been targeted by the given
      * animation definition. Uses filament::TransformManager.
