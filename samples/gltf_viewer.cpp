@@ -60,6 +60,7 @@
 #include <string>
 #include <map>
 #include <cstring> // memcpy
+#include <tuple>
 
 #include "generated/resources/gltf_demo.h"
 #include "materials/uberarchive.h"
@@ -81,9 +82,9 @@ using namespace utils;
 
 std::map<int, int> connection;
 zed::VZCam zedCam;
-std::vector<gltfio::FilamentInstance*> bodyPointers;
-std::vector<filament::math::float3*> filf3Pointers;
-std::vector<filament::math::float4*> filf4Pointers;
+int prevBodyCnt;
+std::vector<std::tuple<gltfio::FilamentInstance*, gltfio::FilamentAsset*,filament::math::float3*, filament::math::float4*>> insts;
+utils::Path filename;
 
 enum MaterialSource {
     JITSHADER,
@@ -530,7 +531,7 @@ int main(int argc, char** argv) {
 
     int optionIndex = handleCommandLineArguments(argc, argv, &app);
 
-    utils::Path filename;
+    
     int num_args = argc - optionIndex;
     if (num_args >= 1) {
         filename = argv[optionIndex];
@@ -553,7 +554,7 @@ int main(int argc, char** argv) {
         }
     }
 
-    auto loadAsset = [&app](utils::Path filename) {
+    auto loadAsset = [&app](utils::Path filename, FilamentAsset& asset, FilamentInstance& instance) {
         // Peek at the file size to allow pre-allocation.
         long contentSize = static_cast<long>(getFileSize(filename.c_str()));
         if (contentSize <= 0) {
@@ -563,20 +564,20 @@ int main(int argc, char** argv) {
 
         // Consume the glTF file.
         std::ifstream in(filename.c_str(), std::ifstream::binary | std::ifstream::in);
-        std::vector<uint8_t> buffer(static_cast<unsigned long>(contentSize));
+        std::vector<uint8_t>buffer(static_cast<unsigned long>(contentSize));
         if (!in.read((char*) buffer.data(), contentSize)) {
             std::cerr << "Unable to read " << filename << std::endl;
             exit(1);
         }
 
         // Parse the glTF file and create Filament entities.
-        app.asset = app.assetLoader->createAsset(buffer.data(), buffer.size());
-        app.instance = app.asset->getInstance();
-        for(int i = 0; i < app.instance->getEntityCount(); i++) {
-            printf("i: %d, %s\n", i, app.asset->getName(app.instance->getEntities()[i]));
+        asset = app.assetLoader->createAsset(buffer.data(), buffer.size());
+        instance = asset->getInstance();
+        for(int i = 0; i < instance->getEntityCount(); i++) {
+            printf("i: %d, %s\n", i, asset->getName(instance->getEntities()[i]));
         }
-        buffer.clear();
-        buffer.shrink_to_fit();
+        // buffer.clear();
+        // buffer.shrink_to_fit();
 
         if (!app.asset) {
             std::cerr << "Unable to parse " << filename << std::endl;
@@ -630,7 +631,7 @@ int main(int argc, char** argv) {
     auto setup = [&](Engine* engine, View* view, Scene* scene) {
         app.engine = engine;
         app.names = new NameComponentManager(EntityManager::get());
-        app.viewer = new ViewerGui(engine, scene, view, 410);
+        app.viewer = new ViewerGui(engine, scene, view, 600);
         app.viewer->getSettings().viewer.autoScaleEnabled = !app.actualSize;
 
         engine->enableAccurateTranslations();
@@ -698,7 +699,7 @@ int main(int argc, char** argv) {
                     GLTF_DEMO_DAMAGEDHELMET_SIZE);
             app.instance = app.asset->getInstance();
         } else {
-            loadAsset(filename);
+            loadAsset(filename, app.asset, app.instance);
         }
 
         loadResources(filename);
@@ -863,9 +864,11 @@ int main(int argc, char** argv) {
     };
 
     auto cleanup = [&app](Engine* engine, View*, Scene*) {
-        for(int i = bodyPointers.size() - 1; i >= 0; i--) {
-            free(bodyPointers[i]);
-            bodyPointers.pop_back();
+        for(int i = insts.size() - 1; i >= 0; i--) {
+            free(std::get<0>(insts[i]));
+            free(std::get<1>(insts[i]));
+            free(std::get<2>(insts[i]));
+            insts.pop_back();
         }
 
         app.automationEngine->terminate();
@@ -915,53 +918,67 @@ int main(int argc, char** argv) {
         app.viewer->populateScene();
 
         sl::Bodies bodies = zedCam.retrieveBodies();
-        for(int i = bodyPointers.size() - 1; i >= 0; i--) {
-            free(bodyPointers[i]);
-            bodyPointers.pop_back();
+        bool bodyCntChanged = bodies.body_list.size() != prevBodyCnt; // 
+        if(bodyCntChanged) {
+            printf("FREEEEEEEEEEEEEE\n");
+            for(int i = insts.size() - 1; i >= 0; i--) {
+                free(std::get<0>(insts[i]));
+                free(std::get<1>(insts[i]));
+                free(std::get<2>(insts[i]));
+                free(std::get<3>(insts[i]));
+                insts.pop_back();
+            }
         }
-        for(int i = filf3Pointers.size() - 1; i >= 0; i --) {
-            free(filf3Pointers[i]);
-            filf3Pointers.pop_back();
-        }
-        for(int i = filf4Pointers.size() - 1; i >= 0; i --) {
-            free(filf4Pointers[i]);
-            filf4Pointers.pop_back();
-        }
-
+        int j = 0;
         for(auto body: bodies.body_list) {
-            gltfio::FilamentInstance* inst = (gltfio::FilamentInstance*)malloc(30000000);
-            filament::math::float3* locPosPJ = (filament::math::float3*)malloc(sizeof(filament::math::float3)*40);
-            filament::math::float4* locOriPJ = (filament::math::float4*)malloc(sizeof(filament::math::float4)*40);
-            bodyPointers.push_back(inst);
-            filf3Pointers.push_back(locPosPJ);
-            filf4Pointers.push_back(locOriPJ);
-            memcpy(inst, app.instance, 30000000);
+            gltfio::FilamentInstance* inst;
+            filament::math::float3* locPosPJ;
+            filament::math::float4* locOriPJ;
+            gltfio::FilamentAsset* asset;
+            if(bodyCntChanged) {
+                inst = (gltfio::FilamentInstance*)malloc(30'000'000);
+                asset = (gltfio::FilamentAsset*)malloc(30'000'000);
+                printf("new INST:::::: %p /// %p\n", (void*)inst, std::this_thread::get_id());
+                locPosPJ = (filament::math::float3*)malloc(sizeof(filament::math::float3)*40);
+                locOriPJ = (filament::math::float4*)malloc(sizeof(filament::math::float4)*40);
+                insts.push_back(std::make_tuple(inst, locPosPJ, locOriPJ));
+                inst = tmpAsset->getInstance();
+            }
+            else {
+                inst = std::get<0>(insts[j]);
+                asset = std::get<1>(insts[j]);
+                locPosPJ = std::get<2>(insts[j]);
+                locOriPJ = std::get<3>(insts[j]);
+            }
             sl::float3 pos = body.position;
             std::vector<sl::float3> localPositionPerJoint = body.local_position_per_joint;
             std::vector<sl::float4> localOrientationPerJoint = body.local_orientation_per_joint;
             for(int i = 0; i < 38; i++) {
-                locPosPJ[i].x = localPositionPerJoint[i].x/10;
-                locPosPJ[i].y = localPositionPerJoint[i].y/10;
-                locPosPJ[i].z = localPositionPerJoint[i].z/10;
-                printf("i:%d x: %f y: %f z: %f\n", i, locPosPJ[i].x, locPosPJ[i].y, locPosPJ[i].z);
+                locPosPJ[i].x = localPositionPerJoint[i].x/100;
+                locPosPJ[i].y = localPositionPerJoint[i].y/100;
+                locPosPJ[i].z = localPositionPerJoint[i].z/100;
+                // printf("i:%d x: %f y: %f z: %f\n", i, locPosPJ[i].x, locPosPJ[i].y, locPosPJ[i].z);
                 locOriPJ[i].x = localOrientationPerJoint[i].w;
                 locOriPJ[i].y = localOrientationPerJoint[i].x;
                 locOriPJ[i].z = localOrientationPerJoint[i].y;
                 locOriPJ[i].w = localOrientationPerJoint[i].z;
-                printf("i:%d x: %f y: %f z: %f w: %f\n", i, locOriPJ[i].x, locOriPJ[i].y, locOriPJ[i].z, locOriPJ[i].w);
+                // printf("i:%d x: %f y: %f z: %f w: %f\n", i, locOriPJ[i].x, locOriPJ[i].y, locOriPJ[i].z, locOriPJ[i].w);
             }
-            locPosPJ[0].x = pos.x/10;
-            locPosPJ[0].y = pos.y/10;
-            locPosPJ[0].z = pos.z/10;
-            printf("000000: %f %f %f\n", locPosPJ[0].x, locPosPJ[0].y, locPosPJ[0].z);
+            locPosPJ[0].x = pos.x/100;
+            locPosPJ[0].y = pos.y/100;
+            locPosPJ[0].z = pos.z/100;
+            printf("000000: %f %f %f, %p\n", locPosPJ[0].x, locPosPJ[0].y, locPosPJ[0].z, (void *)inst);
+            printf("%zu\n", inst->getEntityCount());
+            printf("%zu\n", inst->getEntityCount());
+            printf("sdsdfsdasffads");
             app.viewer->applyZed(connection, inst, locPosPJ, locOriPJ);
+            j++;
         }
-        printf("vec size: %lu\n", bodyPointers.size());
+        printf("vec size: %lu\n", insts.size());
+        prevBodyCnt = bodies.body_list.size();
         // for(int i = 0; i < app.instance->getEntityCount(); i++) {
         //     printf("i: %d, %s\n", i, app.asset->getName(app.instance->getEntities()[i]));
         // }
-
-        app.viewer->applyAnimation(now);
     };
 
     auto resize = [&app](Engine* engine, View* view) {

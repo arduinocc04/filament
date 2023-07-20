@@ -41,7 +41,7 @@ FFilamentInstance::~FFilamentInstance() {
 }
 
 Animator* FFilamentInstance::getAnimator() const noexcept {
-    assert_invariant(mAnimator);
+    // assert_invariant(mAnimator);
     return mAnimator;
 }
 

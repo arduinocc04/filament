@@ -510,6 +510,7 @@ void ViewerGui::sceneSelectionUI() {
 }
 
 void ViewerGui::applyZed(std::map<int, int>connection, FilamentInstance* instance, math::float3 bodyData[], math::float4 ori[]) {
+    printf("Hi");
     Animator& animator = *instance->getAnimator();
     const utils::Entity* entities = instance->getEntities();
     // printf("EC:%zu\n", instance->getEntityCount());
